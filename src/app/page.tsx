@@ -250,7 +250,7 @@ function PricingCard({
     <div
       className={`relative rounded-2xl p-8 ${
         highlighted
-          ? "border-2 border-[var(--primary)] bg-white shadow-xl shadow-[var(--primary)]/10 scale-105"
+          ? "border-2 border-[var(--primary)] bg-white shadow-xl shadow-[var(--primary)]/10 md:scale-105"
           : "border border-[var(--border)] bg-white"
       }`}
     >

@@ -188,7 +188,7 @@ export default function AnalyzePage() {
                 value={petName}
                 onChange={(e) => setPetName(e.target.value)}
                 placeholder="例：小白"
-                className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-base focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
               />
             </div>
             <div>
@@ -200,7 +200,7 @@ export default function AnalyzePage() {
                 value={petAge}
                 onChange={(e) => setPetAge(e.target.value)}
                 placeholder="例：3 歲"
-                className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+                className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-base focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
               />
             </div>
           </div>
@@ -227,26 +227,44 @@ export default function AnalyzePage() {
                 </button>
               </div>
             ) : (
-              <label
-                htmlFor="photo-upload"
-                className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--muted)]/40 py-12 cursor-pointer hover:bg-[var(--muted)]/70 transition-colors"
-              >
-                <Upload className="h-8 w-8 text-[var(--muted-foreground)]" />
-                <div className="text-center">
-                  <p className="font-medium">點擊上傳照片</p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">
-                    JPG / PNG / WEBP，最大 5MB
-                  </p>
+              <div className="space-y-3">
+                {/* 手機優先：兩個明顯的大按鈕 */}
+                <div className="grid grid-cols-2 gap-3">
+                  <label
+                    htmlFor="photo-camera"
+                    className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-[var(--primary)]/30 bg-[var(--accent)]/40 py-6 cursor-pointer hover:bg-[var(--accent)]/70 active:scale-95 transition-all"
+                  >
+                    <Camera className="h-8 w-8 text-[var(--primary)]" />
+                    <span className="text-sm font-semibold">拍照</span>
+                    <input
+                      id="photo-camera"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+                  <label
+                    htmlFor="photo-library"
+                    className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-[var(--border)] bg-[var(--muted)]/40 py-6 cursor-pointer hover:bg-[var(--muted)]/70 active:scale-95 transition-all"
+                  >
+                    <Upload className="h-8 w-8 text-[var(--muted-foreground)]" />
+                    <span className="text-sm font-semibold">從相簿選</span>
+                    <input
+                      ref={fileInputRef}
+                      id="photo-library"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  id="photo-upload"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
+                <p className="text-center text-xs text-[var(--muted-foreground)]">
+                  📸 拍照功能會啟動手機相機 · 最大 5MB
+                </p>
+              </div>
             )}
           </div>
 
@@ -264,7 +282,7 @@ export default function AnalyzePage() {
                   : "例：從昨天開始一直吐，不太喝水，躲在床底下不出來..."
               }
               rows={5}
-              className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 resize-none"
+              className="w-full rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-base focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 resize-none"
             />
             <p className="mt-2 text-xs text-[var(--muted-foreground)]">
               💡 描述越詳細，AI 分析越準確
