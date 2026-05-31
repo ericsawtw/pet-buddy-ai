@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  /* 溫暖療癒色系 */
+  --background: #fdf8f3;        /* 奶油白 */
+  --foreground: #3d2c20;        /* 暖棕色文字 */
+  --primary: #e89b6c;           /* 蜜桃橘 - 主色 */
+  --primary-foreground: #ffffff;
+  --secondary: #a8c69f;         /* 抹茶綠 */
+  --accent: #f4d2c4;            /* 淺粉膚 */
+  --muted: #faeee5;             /* 淺奶茶 */
+  --muted-foreground: #8a6f5d;
+  --border: #ead8c7;
+  --card: #ffffff;
+  --card-foreground: #3d2c20;
+  --destructive: #d9534f;
+  --warning: #f0ad4e;
+  --success: #5cb85c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --font-sans: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 柔和動畫 */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
