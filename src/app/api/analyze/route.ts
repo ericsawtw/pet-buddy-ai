@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { recordAnalysis, saveImage } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -146,6 +147,26 @@ ${body.imageBase64 ? "（飼主有附上照片，請參考）" : "（飼主沒�
     }
 
     const parsed = JSON.parse(jsonMatch[0]) as AnalyzeResponse;
+
+    // 記錄到後台（含照片）。失敗不影響使用者拿到分析結果 —— 分析功能優先
+    try {
+      let imageUrl: string | undefined;
+      if (body.imageBase64 && body.imageMediaType) {
+        imageUrl = await saveImage(body.imageBase64, body.imageMediaType);
+      }
+      await recordAnalysis({
+        petType: body.petType,
+        petName: body.petName,
+        petAge: body.petAge,
+        symptoms: body.symptoms,
+        severity: parsed.severity,
+        result: parsed,
+        imageUrl,
+      });
+    } catch (persistErr) {
+      console.error("記錄分析失敗（不影響使用者）：", persistErr);
+    }
+
     return Response.json(parsed);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
