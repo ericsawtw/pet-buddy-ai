@@ -43,17 +43,63 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError("照片不能超過 5MB");
+    if (!file.type.startsWith("image/")) {
+      setError("請選擇圖片檔");
       return;
     }
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
+    // 原始檔上限放寬到 20MB（手機高畫質照片很大），實際上傳的是壓縮後的版本
+    if (file.size > 20 * 1024 * 1024) {
+      setError("照片不能超過 20MB");
+      return;
+    }
+    setError(null);
+    try {
+      // 縮圖 + 壓縮後再轉 base64，避免超過伺服器請求大小上限
+      const compressed = await compressImage(file);
+      setImageFile(file);
+      setImagePreview(compressed);
+    } catch {
+      setError("照片處理失敗，請換一張試試");
+    }
+  }
+
+  // 將圖片縮到最長邊 1024px 並以 JPEG 壓縮，回傳 data URL
+  async function compressImage(file: File): Promise<string> {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("read failed"));
+      reader.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = document.createElement("img");
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("decode failed"));
+      image.src = dataUrl;
+    });
+
+    const maxDim = 1024;
+    let { width, height } = img;
+    if (width > maxDim || height > maxDim) {
+      if (width >= height) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      } else {
+        width = Math.round((width * maxDim) / height);
+        height = maxDim;
+      }
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no canvas context");
+    ctx.drawImage(img, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", 0.8);
   }
 
   function removeImage() {
@@ -81,7 +127,9 @@ export default function AnalyzePage() {
       if (imageFile && imagePreview) {
         const commaIdx = imagePreview.indexOf(",");
         imageBase64 = imagePreview.slice(commaIdx + 1);
-        imageMediaType = imageFile.type;
+        // 壓縮後的 preview 一律是 JPEG，從 data URL 前綴取得實際 MIME
+        const mimeMatch = imagePreview.match(/^data:(image\/[a-z]+);base64,/);
+        imageMediaType = mimeMatch ? mimeMatch[1] : "image/jpeg";
       }
 
       const res = await fetch("/api/analyze", {
