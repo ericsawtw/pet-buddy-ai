@@ -193,6 +193,14 @@ export default function Home() {
       <footer className="border-t border-[var(--border)] bg-white px-6 py-10">
         <div className="mx-auto max-w-6xl text-center text-sm text-[var(--muted-foreground)]">
           <p className="font-medium text-[var(--foreground)]">毛孩管家 PetBuddy AI</p>
+          <p className="mt-1">
+            <a
+              href="https://careyourpet.net"
+              className="text-[var(--primary)] hover:underline"
+            >
+              careyourpet.net
+            </a>
+          </p>
           <p className="mt-2">© 2026 毛孩管家. 用 AI 守護台灣每一隻毛孩 🐾</p>
           <p className="mt-3 text-xs">
             ⚠️ 本服務提供的健康建議僅供參考，不構成醫療診斷。如有緊急狀況請立即就醫。
