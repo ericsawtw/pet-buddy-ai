@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import AuthStatus from "@/components/AuthStatus";
 import {
   Camera,
   Upload,
@@ -41,6 +42,7 @@ export default function AnalyzePage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [needLogin, setNeedLogin] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -111,6 +113,7 @@ export default function AnalyzePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNeedLogin(false);
     setResult(null);
 
     if (symptoms.trim().length < 2) {
@@ -149,6 +152,7 @@ export default function AnalyzePage() {
 
       if (!res.ok) {
         setError(data.error || "分析失敗，請稍後再試");
+        setNeedLogin(Boolean(data.needLogin));
         return;
       }
 
@@ -167,14 +171,17 @@ export default function AnalyzePage() {
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 sm:py-16">
       <div className="mx-auto max-w-3xl">
-        {/* 返回首頁 */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          回首頁
-        </Link>
+        {/* 頂部列：返回 + 登入狀態 */}
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            回首頁
+          </Link>
+          <AuthStatus />
+        </div>
 
         {/* 標題 */}
         <div className="mt-6 text-center">
@@ -339,9 +346,19 @@ export default function AnalyzePage() {
 
           {/* 錯誤訊息 */}
           {error && (
-            <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4">
-              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
+            <div className="rounded-xl bg-red-50 border border-red-200 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+              {needLogin && (
+                <a
+                  href="/api/auth/google/login"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-medium text-white"
+                >
+                  用 Google 登入
+                </a>
+              )}
             </div>
           )}
 
