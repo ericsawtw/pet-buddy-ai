@@ -12,6 +12,7 @@ export type AnalysisRecord = {
   severity: string; // green / yellow / red
   result: unknown; // 完整 AI 分析結果
   imageUrl?: string; // 照片網址（存在 Vercel Blob）
+  userId?: string; // 提交者的 Google 帳號 ID（會員制）
 };
 
 const PREFIX = "analyses/";
@@ -40,6 +41,7 @@ export async function recordAnalysis(data: {
   severity: string;
   result: unknown;
   imageUrl?: string;
+  userId?: string;
 }): Promise<void> {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
@@ -70,4 +72,13 @@ export async function listAnalyses(limit = 200): Promise<AnalysisRecord[]> {
     })
   );
   return records.filter((r): r is AnalysisRecord => r !== null);
+}
+
+// 只讀出某個會員自己的分析紀錄
+export async function listAnalysesByUser(
+  userId: string,
+  limit = 200
+): Promise<AnalysisRecord[]> {
+  const all = await listAnalyses(limit);
+  return all.filter((r) => r.userId === userId);
 }
