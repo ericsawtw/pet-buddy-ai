@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import { isAuthed } from "@/lib/admin-auth";
+import Link from "next/link";
+import { isAdmin } from "@/lib/admin-auth";
+import { getSessionGoogleId } from "@/lib/session";
 import { listAnalyses, type AnalysisRecord } from "@/lib/store";
+import { getFreeUseToday } from "@/lib/freeuse";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -136,11 +139,33 @@ function RecordCard({ rec }: { rec: AnalysisRecord }) {
 }
 
 export default async function AdminPage() {
-  if (!(await isAuthed())) {
-    redirect("/admin/login");
+  // 未登入 → 導向 Google 登入
+  const googleId = await getSessionGoogleId();
+  if (!googleId) {
+    redirect("/api/auth/google/login");
+  }
+  // 已登入但非管理者 → 顯示無權限
+  if (!(await isAdmin())) {
+    return (
+      <main className="flex-1 flex items-center justify-center px-4 py-20">
+        <div className="text-center">
+          <p className="text-lg font-semibold">你沒有後台權限</p>
+          <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+            此頁僅限管理者帳號存取。
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-block rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-white"
+          >
+            回首頁
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   const records = await listAnalyses();
+  const freeuse = await getFreeUseToday();
 
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 sm:py-14">
@@ -151,9 +176,12 @@ export default async function AdminPage() {
             <p className="mt-1 text-sm text-[var(--muted-foreground)]">
               共 {records.length} 筆紀錄（最新在最上面）
             </p>
+            <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+              今日 /freeuse 試用：{freeuse.count} / {freeuse.limit} 次
+            </p>
           </div>
           <a
-            href="/api/admin/logout"
+            href="/api/auth/logout"
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
           >
             登出

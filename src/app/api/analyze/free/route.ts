@@ -1,16 +1,16 @@
 import { NextRequest } from "next/server";
 import { recordAnalysis, saveImage } from "@/lib/store";
-import { getSessionGoogleId } from "@/lib/session";
-import { getUser, consumeFreeUse, isUnlimited } from "@/lib/users";
 import {
   runAnalysis,
   validateAnalyzeRequest,
   type AnalyzeRequest,
 } from "@/lib/analyze-core";
+import { getFreeUseToday, incrementFreeUseToday } from "@/lib/freeuse";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// 免登入試用端點：全站每天總共 FREEUSE_DAILY_LIMIT 次（不分人）
 export async function POST(req: NextRequest) {
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -21,26 +21,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 會員制：必須登入才能使用分析
-    const googleId = await getSessionGoogleId();
-    if (!googleId) {
+    // 全站每日總量檢查
+    const usage = await getFreeUseToday();
+    if (usage.count >= usage.limit) {
       return Response.json(
-        { error: "請先用 Google 登入才能使用分析", needLogin: true },
-        { status: 401 }
-      );
-    }
-    const member = await getUser(googleId);
-    if (!member) {
-      return Response.json(
-        { error: "請先用 Google 登入才能使用分析", needLogin: true },
-        { status: 401 }
-      );
-    }
-    const unlimited = isUnlimited(member.email);
-    if (!unlimited && member.freeUsesRemaining <= 0) {
-      return Response.json(
-        { error: "免費次數已用完，付費方案即將推出 🙏", outOfFree: true },
-        { status: 403 }
+        {
+          error: `今日免費試用次數已達上限（每日 ${usage.limit} 次），請明天再來 🙏`,
+          dailyLimit: true,
+        },
+        { status: 429 }
       );
     }
 
@@ -52,18 +41,14 @@ export async function POST(req: NextRequest) {
 
     const parsed = await runAnalysis(apiKey, body);
 
-    // 分析成功 → 扣一次免費額度（無限次帳號不扣）
-    let freeUsesRemaining = member.freeUsesRemaining;
-    if (!unlimited) {
-      try {
-        const ok = await consumeFreeUse(googleId);
-        if (ok) freeUsesRemaining = Math.max(0, member.freeUsesRemaining - 1);
-      } catch (e) {
-        console.error("扣免費次數失敗：", e);
-      }
+    // 成功後才計入今日用量
+    try {
+      await incrementFreeUseToday();
+    } catch (e) {
+      console.error("freeuse 計數失敗：", e);
     }
 
-    // 記錄到後台（含照片、擁有者）。失敗不影響使用者拿到分析結果
+    // 記錄到後台（標記為訪客試用，無 userId）
     try {
       let imageUrl: string | undefined;
       if (body.imageBase64 && body.imageMediaType) {
@@ -77,16 +62,16 @@ export async function POST(req: NextRequest) {
         severity: parsed.severity,
         result: parsed,
         imageUrl,
-        userId: googleId,
+        userId: "freeuse-guest",
       });
     } catch (persistErr) {
       console.error("記錄分析失敗（不影響使用者）：", persistErr);
     }
 
-    return Response.json({ ...parsed, freeUsesRemaining, unlimited });
+    return Response.json({ ...parsed });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("Analyze error:", err);
+    console.error("Free analyze error:", err);
     return Response.json({ error: `分析過程出錯：${message}` }, { status: 500 });
   }
 }

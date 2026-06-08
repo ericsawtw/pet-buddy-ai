@@ -1,5 +1,5 @@
 import { getSessionGoogleId } from "@/lib/session";
-import { getUser } from "@/lib/users";
+import { getUser, isUnlimited } from "@/lib/users";
 
 export const runtime = "nodejs";
 
@@ -19,6 +19,7 @@ export async function GET() {
       email: user.email,
       picture: user.picture,
       freeUsesRemaining: user.freeUsesRemaining,
+      unlimited: isUnlimited(user.email),
     },
   });
 }

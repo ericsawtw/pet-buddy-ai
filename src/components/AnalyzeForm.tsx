@@ -32,7 +32,15 @@ type AnalyzeResult = {
   warning?: string;
 };
 
-export default function AnalyzePage() {
+export default function AnalyzeForm({
+  endpoint = "/api/analyze",
+  showAuth = true,
+  showBack = true,
+}: {
+  endpoint?: string;
+  showAuth?: boolean;
+  showBack?: boolean;
+}) {
   const [petType, setPetType] = useState<"dog" | "cat">("dog");
   const [petName, setPetName] = useState("");
   const [petAge, setPetAge] = useState("");
@@ -135,7 +143,7 @@ export default function AnalyzePage() {
         imageMediaType = mimeMatch ? mimeMatch[1] : "image/jpeg";
       }
 
-      const res = await fetch("/api/analyze", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -173,14 +181,18 @@ export default function AnalyzePage() {
       <div className="mx-auto max-w-3xl">
         {/* 頂部列：返回 + 登入狀態 */}
         <div className="flex items-center justify-between gap-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            回首頁
-          </Link>
-          <AuthStatus />
+          {showBack ? (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              回首頁
+            </Link>
+          ) : (
+            <span className="text-sm font-semibold">🐾 毛孩管家</span>
+          )}
+          {showAuth && <AuthStatus />}
         </div>
 
         {/* 標題 */}

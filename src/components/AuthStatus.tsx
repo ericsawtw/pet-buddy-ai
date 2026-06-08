@@ -10,6 +10,7 @@ type Me = {
   email: string;
   picture?: string;
   freeUsesRemaining: number;
+  unlimited?: boolean;
 } | null;
 
 export default function AuthStatus() {
@@ -67,7 +68,7 @@ export default function AuthStatus() {
         <div className="text-xs leading-tight">
           <div className="font-medium">{me.name}</div>
           <div className="text-[var(--muted-foreground)]">
-            剩 {me.freeUsesRemaining} 次免費
+            {me.unlimited ? "無限次 ✨" : `剩 ${me.freeUsesRemaining} 次免費`}
           </div>
         </div>
       </div>

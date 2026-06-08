@@ -107,7 +107,7 @@ export default async function HistoryPage() {
     <main className="flex-1 px-4 py-10 sm:px-6 sm:py-14">
       <div className="mx-auto max-w-3xl">
         <Link
-          href="/analyze"
+          href="/"
           className="inline-flex items-center gap-2 text-sm text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />

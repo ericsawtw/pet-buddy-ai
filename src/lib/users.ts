@@ -13,6 +13,16 @@ export type User = {
 const PREFIX = "users/";
 const FREE_QUOTA = 3;
 
+// 指定為「無限次」的 email（環境變數 UNLIMITED_EMAILS，逗號分隔，不分大小寫）
+export function isUnlimited(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const list = (process.env.UNLIMITED_EMAILS || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(email.toLowerCase());
+}
+
 // 用 SESSION_SECRET 把 googleId 雜湊成 Blob 路徑，讓檔名無法從 googleId 直接猜出（隱私）
 function pathFor(googleId: string): string {
   const h = createHmac("sha256", process.env.SESSION_SECRET || "")
