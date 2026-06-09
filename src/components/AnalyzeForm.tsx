@@ -209,6 +209,32 @@ export default function AnalyzeForm({
           </p>
         </div>
 
+        {/* 使用說明 */}
+        <div className="mt-8 rounded-2xl bg-[var(--muted)]/60 p-5 ring-1 ring-[var(--border)]">
+          <p className="font-bold">📋 怎麼用（30 秒）</p>
+          <ol className="mt-3 space-y-2 text-sm">
+            <li className="flex gap-2">
+              <span className="font-semibold text-[var(--primary)]">1.</span>
+              選狗狗或貓咪，填上名字、年齡（選填）。
+            </li>
+            <li className="flex gap-2">
+              <span className="font-semibold text-[var(--primary)]">2.</span>
+              拍張照或從相簿選一張不舒服的地方（選填，有照片更準）。
+            </li>
+            <li className="flex gap-2">
+              <span className="font-semibold text-[var(--primary)]">3.</span>
+              用打字描述症狀，<strong>越詳細越準</strong>（什麼時候開始、有沒有食慾、精神如何）。
+            </li>
+            <li className="flex gap-2">
+              <span className="font-semibold text-[var(--primary)]">4.</span>
+              按「開始分析」，AI 會給你 <strong>🚦 紅黃綠燈</strong>、可能原因、居家照護與就醫建議。
+            </li>
+          </ol>
+          <p className="mt-3 text-xs text-[var(--muted-foreground)]">
+            ⚠️ 分析僅供參考，不是醫療診斷；緊急狀況（出血、抽搐、無法呼吸等）請立即送醫。
+          </p>
+        </div>
+
         {/* 表單 */}
         <form onSubmit={handleSubmit} className="mt-10 space-y-6 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-[var(--border)] sm:p-8">
           {/* 寵物類型 */}
