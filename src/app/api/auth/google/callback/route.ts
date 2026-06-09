@@ -64,7 +64,7 @@ export async function GET(req: Request) {
     });
     await setSession(profile.sub);
 
-    return Response.redirect(`${url.origin}/analyze`);
+    return Response.redirect(`${url.origin}/`);
   } catch {
     return Response.redirect(`${url.origin}/?login=error`);
   }
