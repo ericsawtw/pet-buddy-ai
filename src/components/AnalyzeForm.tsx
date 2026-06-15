@@ -215,19 +215,23 @@ export default function AnalyzeForm({
           <ol className="mt-3 space-y-2 text-sm">
             <li className="flex gap-2">
               <span className="font-semibold text-[var(--primary)]">1.</span>
-              選狗狗或貓咪，填上名字、年齡（選填）。
+              <span>選狗狗或貓咪，填上名字、年齡（選填）。</span>
             </li>
             <li className="flex gap-2">
               <span className="font-semibold text-[var(--primary)]">2.</span>
-              拍張照或從相簿選一張不舒服的地方（選填，有照片更準）。
+              <span>拍張照或從相簿選一張不舒服的地方（選填，有照片更準）。</span>
             </li>
             <li className="flex gap-2">
               <span className="font-semibold text-[var(--primary)]">3.</span>
-              用打字描述症狀，<strong>越詳細越準</strong>（什麼時候開始、有沒有食慾、精神如何）。
+              <span>
+                用打字描述症狀，<strong>越詳細越準</strong>（什麼時候開始、有沒有食慾、精神如何）。
+              </span>
             </li>
             <li className="flex gap-2">
               <span className="font-semibold text-[var(--primary)]">4.</span>
-              按「開始分析」，AI 會給你 <strong>🚦 紅黃綠燈</strong>、可能原因、居家照護與就醫建議。
+              <span>
+                按「開始分析」，AI 會給你 <strong>🚦 紅黃綠燈</strong>、可能原因、居家照護與就醫建議。
+              </span>
             </li>
           </ol>
           <p className="mt-3 text-xs text-[var(--muted-foreground)]">
