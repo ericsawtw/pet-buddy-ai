@@ -5,6 +5,7 @@ import { isAdmin } from "@/lib/admin-auth";
 import { getSessionGoogleId } from "@/lib/session";
 import { listAnalyses, type AnalysisRecord } from "@/lib/store";
 import { getFreeUseToday } from "@/lib/freeuse";
+import { getUser } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,7 +41,13 @@ function formatTime(iso: string): string {
   }
 }
 
-function RecordCard({ rec }: { rec: AnalysisRecord }) {
+function RecordCard({
+  rec,
+  uploader,
+}: {
+  rec: AnalysisRecord;
+  uploader: string;
+}) {
   const result = rec.result as AnalyzeResult | null;
   const sev = SEVERITY_STYLE[rec.severity] ?? {
     label: rec.severity,
@@ -60,6 +67,9 @@ function RecordCard({ rec }: { rec: AnalysisRecord }) {
               {rec.petAge ? ` · ${rec.petAge}` : ""}
             </span>
           </div>
+          <p className="mt-1 text-xs font-medium text-[var(--foreground)]">
+            👤 {uploader}
+          </p>
           <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
             {formatTime(rec.createdAt)}
           </p>
@@ -167,6 +177,27 @@ export default async function AdminPage() {
   const records = await listAnalyses();
   const freeuse = await getFreeUseToday();
 
+  // 把每筆紀錄的 userId 解析成「上傳者」標籤（名字 + email）
+  const realIds = [
+    ...new Set(
+      records
+        .map((r) => r.userId)
+        .filter((id): id is string => Boolean(id) && id !== "freeuse-guest")
+    ),
+  ];
+  const userMap = new Map<string, string>();
+  await Promise.all(
+    realIds.map(async (id) => {
+      const u = await getUser(id);
+      userMap.set(id, u ? `${u.name}（${u.email}）` : "（查無此會員）");
+    })
+  );
+  const uploaderOf = (userId?: string): string => {
+    if (!userId) return "舊紀錄 / 未登入";
+    if (userId === "freeuse-guest") return "訪客試用（/freeuse）";
+    return userMap.get(userId) || "（查無此會員）";
+  };
+
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 sm:py-14">
       <div className="mx-auto max-w-3xl">
@@ -195,7 +226,7 @@ export default async function AdminPage() {
         ) : (
           <div className="mt-6 space-y-4">
             {records.map((rec) => (
-              <RecordCard key={rec.id} rec={rec} />
+              <RecordCard key={rec.id} rec={rec} uploader={uploaderOf(rec.userId)} />
             ))}
           </div>
         )}
