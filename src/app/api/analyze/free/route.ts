@@ -40,7 +40,10 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: invalid }, { status: 400 });
     }
 
-    const { result: parsed, usage } = await runAnalysis(apiKey, body);
+    const { result: parsed, usage: tokenUsage } = await runAnalysis(
+      apiKey,
+      body
+    );
 
     // 成功後才計入今日用量
     try {
@@ -51,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     // 記錄本月 API 用量（實際 token）
     try {
-      await recordApiUsage(usage.inputTokens, usage.outputTokens);
+      await recordApiUsage(tokenUsage.inputTokens, tokenUsage.outputTokens);
     } catch (e) {
       console.error("記錄 API 用量失敗：", e);
     }
