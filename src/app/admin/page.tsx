@@ -6,6 +6,7 @@ import { getSessionGoogleId } from "@/lib/session";
 import { listAnalyses, type AnalysisRecord } from "@/lib/store";
 import { getFreeUseToday } from "@/lib/freeuse";
 import { getUser } from "@/lib/users";
+import { getMonthUsage } from "@/lib/usage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -176,6 +177,7 @@ export default async function AdminPage() {
 
   const records = await listAnalyses();
   const freeuse = await getFreeUseToday();
+  const usage = await getMonthUsage();
 
   // 把每筆紀錄的 userId 解析成「上傳者」標籤（名字 + email）
   const realIds = [
@@ -209,6 +211,10 @@ export default async function AdminPage() {
             </p>
             <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
               今日 /freeuse 試用：{freeuse.count} / {freeuse.limit} 次
+            </p>
+            <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
+              本月 API（{usage.month}）：{usage.count} 次 · 約 US$
+              {usage.costUsd.toFixed(2)}（NT${Math.round(usage.costTwd)}）
             </p>
           </div>
           <a

@@ -6,6 +6,7 @@ import {
   type AnalyzeRequest,
 } from "@/lib/analyze-core";
 import { getFreeUseToday, incrementFreeUseToday } from "@/lib/freeuse";
+import { recordApiUsage } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,13 +40,20 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: invalid }, { status: 400 });
     }
 
-    const parsed = await runAnalysis(apiKey, body);
+    const { result: parsed, usage } = await runAnalysis(apiKey, body);
 
     // 成功後才計入今日用量
     try {
       await incrementFreeUseToday();
     } catch (e) {
       console.error("freeuse 計數失敗：", e);
+    }
+
+    // 記錄本月 API 用量（實際 token）
+    try {
+      await recordApiUsage(usage.inputTokens, usage.outputTokens);
+    } catch (e) {
+      console.error("記錄 API 用量失敗：", e);
     }
 
     // 記錄到後台（標記為訪客試用，無 userId）

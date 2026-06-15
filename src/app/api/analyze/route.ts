@@ -7,6 +7,7 @@ import {
   validateAnalyzeRequest,
   type AnalyzeRequest,
 } from "@/lib/analyze-core";
+import { recordApiUsage } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -50,7 +51,14 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: invalid }, { status: 400 });
     }
 
-    const parsed = await runAnalysis(apiKey, body);
+    const { result: parsed, usage } = await runAnalysis(apiKey, body);
+
+    // 記錄本月 API 用量（實際 token）
+    try {
+      await recordApiUsage(usage.inputTokens, usage.outputTokens);
+    } catch (e) {
+      console.error("記錄 API 用量失敗：", e);
+    }
 
     // 分析成功 → 扣一次免費額度（無限次帳號不扣）
     let freeUsesRemaining = member.freeUsesRemaining;

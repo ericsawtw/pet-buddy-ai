@@ -63,11 +63,16 @@ export function validateAnalyzeRequest(body: AnalyzeRequest): string | null {
   return null;
 }
 
-// 呼叫 Claude 取得分析結果（失敗時 throw Error）
+export type AnalyzeOutcome = {
+  result: AnalyzeResponse;
+  usage: { inputTokens: number; outputTokens: number };
+};
+
+// 呼叫 Claude 取得分析結果（失敗時 throw Error）。一併回傳實際 token 用量
 export async function runAnalysis(
   apiKey: string,
   body: AnalyzeRequest
-): Promise<AnalyzeResponse> {
+): Promise<AnalyzeOutcome> {
   const client = new Anthropic({ apiKey });
 
   const petTypeZh = body.petType === "dog" ? "狗狗" : "貓咪";
@@ -117,5 +122,11 @@ ${body.imageBase64 ? "（飼主有附上照片，請參考）" : "（飼主沒�
     throw new Error("AI 回應格式異常，請稍後再試");
   }
 
-  return JSON.parse(jsonMatch[0]) as AnalyzeResponse;
+  return {
+    result: JSON.parse(jsonMatch[0]) as AnalyzeResponse,
+    usage: {
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
+    },
+  };
 }
