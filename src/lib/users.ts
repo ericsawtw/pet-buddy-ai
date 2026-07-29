@@ -84,3 +84,22 @@ export async function consumeFreeUse(googleId: string): Promise<boolean> {
   await saveUser(user);
   return true;
 }
+
+// 列出所有已註冊會員（給後台看），最新註冊的在最前面
+export async function listUsers(limit = 1000): Promise<User[]> {
+  const { blobs } = await list({ prefix: PREFIX, limit });
+  const users = await Promise.all(
+    blobs.map(async (b) => {
+      try {
+        const res = await fetch(b.url, { cache: "no-store" });
+        if (!res.ok) return null;
+        return (await res.json()) as User;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return users
+    .filter((u): u is User => Boolean(u))
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+}

@@ -5,7 +5,7 @@ import { isAdmin } from "@/lib/admin-auth";
 import { getSessionGoogleId } from "@/lib/session";
 import { listAnalyses, type AnalysisRecord } from "@/lib/store";
 import { getFreeUseToday } from "@/lib/freeuse";
-import { getUser } from "@/lib/users";
+import { getUser, listUsers } from "@/lib/users";
 import { getMonthUsage } from "@/lib/usage";
 
 export const dynamic = "force-dynamic";
@@ -178,6 +178,7 @@ export default async function AdminPage() {
   const records = await listAnalyses();
   const freeuse = await getFreeUseToday();
   const usage = await getMonthUsage();
+  const users = await listUsers();
 
   // 把每筆紀錄的 userId 解析成「上傳者」標籤（名字 + email）
   const realIds = [
@@ -216,6 +217,9 @@ export default async function AdminPage() {
               本月 API（{usage.month}）：{usage.count} 次 · 約 US$
               {usage.costUsd.toFixed(2)}（NT${Math.round(usage.costTwd)}）
             </p>
+            <p className="mt-0.5 text-xs font-medium text-[var(--foreground)]">
+              已註冊會員：{users.length} 人
+            </p>
           </div>
           <a
             href="/api/auth/logout"
@@ -225,6 +229,38 @@ export default async function AdminPage() {
           </a>
         </div>
 
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold">
+            已註冊會員（{users.length} 人）
+          </h2>
+          {users.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+              目前還沒有人註冊。
+            </p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {users.map((u) => (
+                <div
+                  key={u.googleId}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{u.name}</p>
+                    <p className="truncate text-xs text-[var(--muted-foreground)]">
+                      {u.email}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right text-xs text-[var(--muted-foreground)]">
+                    <p>註冊：{formatTime(u.createdAt)}</p>
+                    <p>剩餘免費：{u.freeUsesRemaining} 次</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <h2 className="mt-10 text-lg font-semibold">分析紀錄</h2>
         {records.length === 0 ? (
           <div className="mt-10 rounded-2xl border border-dashed border-[var(--border)] p-10 text-center text-sm text-[var(--muted-foreground)]">
             目前還沒有任何分析紀錄。等使用者開始使用後，紀錄會出現在這裡。
