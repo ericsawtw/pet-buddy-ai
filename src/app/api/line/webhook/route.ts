@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
-import { verifyLineSignature, lineReplyText, getLineImage } from "@/lib/line";
+import {
+  verifyLineSignature,
+  lineReplyText,
+  lineReplyPhotoPrompt,
+  getLineImage,
+} from "@/lib/line";
 import { getLineUser, setLinePending, consumeLineFree } from "@/lib/line-users";
 import { saveImage, recordAnalysis } from "@/lib/store";
 import {
@@ -42,9 +47,9 @@ async function handleMenuCommand(
 ): Promise<boolean> {
   switch (text) {
     case "開始健檢":
-      await lineReplyText(
+      await lineReplyPhotoPrompt(
         replyToken,
-        "🩺 開始健檢！\n請直接傳一張毛孩的照片 📸，接著用文字描述症狀，我就幫你做健康分級。"
+        "🩺 開始健檢！\n請傳一張毛孩的照片 📸（點下方按鈕拍照或選圖），接著用文字描述症狀，我就幫你做健康分級。"
       );
       return true;
     case "剩餘次數": {
@@ -100,9 +105,9 @@ async function handleEvent(ev: LineEvent): Promise<void> {
   const replyToken = ev.replyToken;
   const userId = ev.source?.userId;
 
-  // 加好友 → 歡迎訊息
+  // 加好友 → 歡迎訊息（附拍照/相簿按鈕）
   if (ev.type === "follow" && replyToken) {
-    await lineReplyText(replyToken, WELCOME);
+    await lineReplyPhotoPrompt(replyToken, WELCOME);
     return;
   }
 
@@ -136,9 +141,9 @@ async function handleEvent(ev: LineEvent): Promise<void> {
     const user = await getLineUser(userId);
 
     if (!user.pending) {
-      await lineReplyText(
+      await lineReplyPhotoPrompt(
         replyToken,
-        "請先傳一張毛孩的照片 🐾，再用文字描述症狀，我才能幫你分析喔。"
+        "請先傳一張毛孩的照片 🐾（點下方按鈕拍照或選圖），再用文字描述症狀，我才能幫你分析喔。"
       );
       return;
     }

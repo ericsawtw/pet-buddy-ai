@@ -16,19 +16,40 @@ export function verifyLineSignature(rawBody: string, signature: string | null): 
   return hash.length === signature.length && hash === signature;
 }
 
-// 用 replyToken 回覆文字（回覆訊息免費，不計入推播額度）
-export async function lineReplyText(replyToken: string, text: string): Promise<void> {
+// 用 replyToken 回覆訊息（回覆訊息免費，不計入推播額度）
+export async function lineReply(replyToken: string, messages: unknown[]): Promise<void> {
   const res = await fetch(REPLY_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken()}`,
     },
-    body: JSON.stringify({ replyToken, messages: [{ type: "text", text }] }),
+    body: JSON.stringify({ replyToken, messages }),
   });
   if (!res.ok) {
     console.error("LINE reply 失敗", res.status, await res.text().catch(() => ""));
   }
+}
+
+export async function lineReplyText(replyToken: string, text: string): Promise<void> {
+  await lineReply(replyToken, [{ type: "text", text }]);
+}
+
+// 回覆文字，並在下方附「📷 拍照 / 🖼️ 從相簿選」快速按鈕
+// （點了直接叫出相機或相簿，選完照片自動傳給 bot；僅手機 App 有效）
+export async function lineReplyPhotoPrompt(replyToken: string, text: string): Promise<void> {
+  await lineReply(replyToken, [
+    {
+      type: "text",
+      text,
+      quickReply: {
+        items: [
+          { type: "action", action: { type: "cameraRoll", label: "🖼️ 從相簿選" } },
+          { type: "action", action: { type: "camera", label: "📷 拍照" } },
+        ],
+      },
+    },
+  ]);
 }
 
 // 下載使用者傳來的圖片，回傳 base64 + mediaType
