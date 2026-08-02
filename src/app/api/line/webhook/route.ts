@@ -26,6 +26,52 @@ const WELCOME =
   "我就用 AI 幫你做健康分級（🟢🟡🔴）＋照護與就醫建議。\n\n" +
   "先傳一張毛孩的照片吧 📸";
 
+const PRICING_MSG =
+  "💳 完整深度健檢報告 方案：\n" +
+  "・單次 NT$59\n" +
+  "・3 次 NT$149（約 50/次）\n" +
+  "・10 次 NT$399（約 40/次）\n\n" +
+  "付款採無痕轉帳（省手續費）。收款帳戶與回報方式即將開放，" +
+  "想先購買可點「聯絡客服」留言給我們 🐾";
+
+// 圖文選單按鈕（點下去會送出對應關鍵字）。有處理就回 true
+async function handleMenuCommand(
+  userId: string,
+  text: string,
+  replyToken: string
+): Promise<boolean> {
+  switch (text) {
+    case "開始健檢":
+      await lineReplyText(
+        replyToken,
+        "🩺 開始健檢！\n請直接傳一張毛孩的照片 📸，接著用文字描述症狀，我就幫你做健康分級。"
+      );
+      return true;
+    case "剩餘次數": {
+      const u = await getLineUser(userId);
+      await lineReplyText(
+        replyToken,
+        `🦴 你目前免費剩餘 ${u.freeUsesRemaining} 次。\n用完後可到「購買次數」加購 🐾`
+      );
+      return true;
+    }
+    case "購買次數":
+      await lineReplyText(replyToken, PRICING_MSG);
+      return true;
+    case "歷史紀錄":
+      await lineReplyText(replyToken, "📖 歷史紀錄功能即將推出，敬請期待 🙏");
+      return true;
+    case "聯絡客服":
+      await lineReplyText(
+        replyToken,
+        "💬 有任何問題，直接在這裡留言就好，我們會盡快回覆你 🐾"
+      );
+      return true;
+    default:
+      return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-line-signature");
@@ -83,6 +129,10 @@ async function handleEvent(ev: LineEvent): Promise<void> {
   // 收到文字 → 若有待分析的照片就進行分析
   if (msg.type === "text") {
     const text = (msg.text ?? "").trim();
+
+    // 先處理圖文選單按鈕（關鍵字）
+    if (await handleMenuCommand(userId, text, replyToken)) return;
+
     const user = await getLineUser(userId);
 
     if (!user.pending) {
