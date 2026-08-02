@@ -36,6 +36,20 @@ export async function lineReplyText(replyToken: string, text: string): Promise<v
   await lineReply(replyToken, [{ type: "text", text }]);
 }
 
+// 回覆一支影片（LINE 內嵌播放），可加一段文字
+export async function lineReplyVideo(
+  replyToken: string,
+  videoUrl: string,
+  previewUrl: string,
+  followText?: string
+): Promise<void> {
+  const messages: unknown[] = [
+    { type: "video", originalContentUrl: videoUrl, previewImageUrl: previewUrl },
+  ];
+  if (followText) messages.push({ type: "text", text: followText });
+  await lineReply(replyToken, messages);
+}
+
 // 主動推播文字給某個 LINE 使用者（用於通知管理員；對方須為官方帳號好友）
 export async function linePush(to: string, text: string): Promise<void> {
   const res = await fetch(PUSH_URL, {

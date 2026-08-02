@@ -4,6 +4,7 @@ import {
   lineReply,
   lineReplyText,
   lineReplyPhotoPrompt,
+  lineReplyVideo,
   linePush,
   getLineImage,
 } from "@/lib/line";
@@ -51,6 +52,11 @@ const PRICING_MSG =
   "帳號：314972087423\n\n" +
   "轉帳後請點下方「📝 已匯款回報」填單，我們人工確認入帳後幫你開通次數 🐾";
 
+const TUTORIAL_VIDEO_URL =
+  "https://xn8q9yjwnzrmbvwt.public.blob.vercel-storage.com/promo/pet-buddy-final-v2-ZJBUQW7EuAhR5JxKSdM9yysB6IUJxo.mp4";
+const TUTORIAL_PREVIEW_URL =
+  "https://xn8q9yjwnzrmbvwt.public.blob.vercel-storage.com/line/tut-thumb-RWFRLjpvQM65VDtzLm3WqSnVvjktT9.jpg";
+
 // 圖文選單按鈕（點下去會送出對應關鍵字）。有處理就回 true
 async function handleMenuCommand(
   userId: string,
@@ -94,6 +100,14 @@ async function handleMenuCommand(
       return true;
     case "歷史紀錄":
       await lineReplyText(replyToken, "📖 歷史紀錄功能即將推出，敬請期待 🙏");
+      return true;
+    case "使用教學":
+      await lineReplyVideo(
+        replyToken,
+        TUTORIAL_VIDEO_URL,
+        TUTORIAL_PREVIEW_URL,
+        "▶️ 30 秒看懂怎麼用！\n有問題點「聯絡客服」找我們 🐾"
+      );
       return true;
     case "聯絡客服":
       await lineReplyText(
