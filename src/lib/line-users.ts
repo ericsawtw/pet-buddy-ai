@@ -79,6 +79,29 @@ export async function addPaidCredits(
   return u;
 }
 
+// 列出所有 LINE 用戶（後台用）。路徑是雜湊過的，靠讀 JSON 內容取回 lineUserId
+export async function listLineUsers(): Promise<LineUser[]> {
+  const { blobs } = await list({ prefix: PREFIX });
+  const users = await Promise.all(
+    blobs
+      .filter((b) => b.pathname.endsWith(".json"))
+      .map(async (b) => {
+        try {
+          const res = await fetch(b.url, { cache: "no-store" });
+          if (!res.ok) return null;
+          const u = (await res.json()) as LineUser;
+          u.paidCredits = u.paidCredits ?? 0;
+          return u;
+        } catch {
+          return null;
+        }
+      })
+  );
+  return users
+    .filter((u): u is LineUser => u !== null)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // 新的在前
+}
+
 // 設定 / 清除「待分析照片」
 export async function setLinePending(
   lineUserId: string,

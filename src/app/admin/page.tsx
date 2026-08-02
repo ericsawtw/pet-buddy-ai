@@ -6,6 +6,7 @@ import { getSessionGoogleId } from "@/lib/session";
 import { listAnalyses, type AnalysisRecord } from "@/lib/store";
 import { getFreeUseToday } from "@/lib/freeuse";
 import { getUser, listUsers } from "@/lib/users";
+import { listLineUsers } from "@/lib/line-users";
 import { getMonthUsage } from "@/lib/usage";
 
 export const dynamic = "force-dynamic";
@@ -179,13 +180,17 @@ export default async function AdminPage() {
   const freeuse = await getFreeUseToday();
   const usage = await getMonthUsage();
   const users = await listUsers();
+  const lineUsers = await listLineUsers();
 
   // 把每筆紀錄的 userId 解析成「上傳者」標籤（名字 + email）
   const realIds = [
     ...new Set(
       records
         .map((r) => r.userId)
-        .filter((id): id is string => Boolean(id) && id !== "freeuse-guest")
+        .filter(
+          (id): id is string =>
+            !!id && id !== "freeuse-guest" && !id.startsWith("line:")
+        )
     ),
   ];
   const userMap = new Map<string, string>();
@@ -198,6 +203,7 @@ export default async function AdminPage() {
   const uploaderOf = (userId?: string): string => {
     if (!userId) return "舊紀錄 / 未登入";
     if (userId === "freeuse-guest") return "訪客試用（/freeuse）";
+    if (userId.startsWith("line:")) return "LINE 用戶";
     return userMap.get(userId) || "（查無此會員）";
   };
 
@@ -218,7 +224,7 @@ export default async function AdminPage() {
               {usage.costUsd.toFixed(2)}（NT${Math.round(usage.costTwd)}）
             </p>
             <p className="mt-0.5 text-xs font-medium text-[var(--foreground)]">
-              已註冊會員：{users.length} 人
+              已註冊會員：{users.length} 人 · LINE 用戶：{lineUsers.length} 人
             </p>
           </div>
           <a
@@ -253,6 +259,39 @@ export default async function AdminPage() {
                   <div className="shrink-0 text-right text-xs text-[var(--muted-foreground)]">
                     <p>註冊：{formatTime(u.createdAt)}</p>
                     <p>剩餘免費：{u.freeUsesRemaining} 次</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold">
+            LINE 官方帳號用戶（{lineUsers.length} 人）
+          </h2>
+          {lineUsers.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+              目前還沒有人透過 LINE 加入。
+            </p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {lineUsers.map((u) => (
+                <div
+                  key={u.lineUserId}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      💬 {u.lineUserId.slice(0, 8)}…{u.lineUserId.slice(-4)}
+                    </p>
+                    <p className="truncate text-xs text-[var(--muted-foreground)]">
+                      免費 {u.freeUsesRemaining} · 付費 {u.paidCredits} · 共{" "}
+                      {u.freeUsesRemaining + u.paidCredits} 次可用
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right text-xs text-[var(--muted-foreground)]">
+                    <p>加入：{formatTime(u.createdAt)}</p>
                   </div>
                 </div>
               ))}
