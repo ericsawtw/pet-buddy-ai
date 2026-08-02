@@ -1,6 +1,7 @@
 import { createHmac } from "crypto";
 
 const REPLY_URL = "https://api.line.me/v2/bot/message/reply";
+const PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const contentUrl = (messageId: string) =>
   `https://api-data.line.me/v2/bot/message/${messageId}/content`;
 
@@ -33,6 +34,21 @@ export async function lineReply(replyToken: string, messages: unknown[]): Promis
 
 export async function lineReplyText(replyToken: string, text: string): Promise<void> {
   await lineReply(replyToken, [{ type: "text", text }]);
+}
+
+// 主動推播文字給某個 LINE 使用者（用於通知管理員；對方須為官方帳號好友）
+export async function linePush(to: string, text: string): Promise<void> {
+  const res = await fetch(PUSH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken()}`,
+    },
+    body: JSON.stringify({ to, messages: [{ type: "text", text }] }),
+  });
+  if (!res.ok) {
+    console.error("LINE push 失敗", res.status, await res.text().catch(() => ""));
+  }
 }
 
 // 回覆文字，並在下方附「📷 拍照 / 🖼️ 從相簿選」快速按鈕

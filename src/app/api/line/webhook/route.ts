@@ -1,11 +1,21 @@
 import { NextRequest } from "next/server";
 import {
   verifyLineSignature,
+  lineReply,
   lineReplyText,
   lineReplyPhotoPrompt,
+  linePush,
   getLineImage,
 } from "@/lib/line";
-import { getLineUser, setLinePending, consumeLineFree } from "@/lib/line-users";
+import {
+  getLineUser,
+  setLinePending,
+  consumeCredit,
+  remainingCredits,
+  addPaidCredits,
+} from "@/lib/line-users";
+import { addOwner, getOwnerIds } from "@/lib/line-owners";
+import { findPendingByLast5, markPaymentConfirmed } from "@/lib/line-payments";
 import { saveImage, recordAnalysis } from "@/lib/store";
 import {
   runAnalysis,
@@ -36,8 +46,10 @@ const PRICING_MSG =
   "・單次 NT$59\n" +
   "・3 次 NT$149（約 50/次）\n" +
   "・10 次 NT$399（約 40/次）\n\n" +
-  "付款採無痕轉帳（省手續費）。收款帳戶與回報方式即將開放，" +
-  "想先購買可點「聯絡客服」留言給我們 🐾";
+  "🏦 收款帳戶（無痕轉帳・省手續費）\n" +
+  "銀行：中國信託銀行（822）\n" +
+  "帳號：314972087423\n\n" +
+  "轉帳後請點下方「📝 已匯款回報」填單，我們人工確認入帳後幫你開通次數 🐾";
 
 // 圖文選單按鈕（點下去會送出對應關鍵字）。有處理就回 true
 async function handleMenuCommand(
@@ -56,12 +68,29 @@ async function handleMenuCommand(
       const u = await getLineUser(userId);
       await lineReplyText(
         replyToken,
-        `🦴 你目前免費剩餘 ${u.freeUsesRemaining} 次。\n用完後可到「購買次數」加購 🐾`
+        `🦴 你目前可用 ${remainingCredits(u)} 次（免費 ${u.freeUsesRemaining}＋付費 ${u.paidCredits ?? 0}）。\n用完可到「購買次數」加值 🐾`
       );
       return true;
     }
     case "購買次數":
-      await lineReplyText(replyToken, PRICING_MSG);
+      await lineReply(replyToken, [
+        {
+          type: "text",
+          text: PRICING_MSG,
+          quickReply: {
+            items: [
+              {
+                type: "action",
+                action: {
+                  type: "uri",
+                  label: "📝 已匯款回報",
+                  uri: `https://careyourpet.net/line-report?u=${encodeURIComponent(userId)}`,
+                },
+              },
+            ],
+          },
+        },
+      ]);
       return true;
     case "歷史紀錄":
       await lineReplyText(replyToken, "📖 歷史紀錄功能即將推出，敬請期待 🙏");
@@ -135,7 +164,10 @@ async function handleEvent(ev: LineEvent): Promise<void> {
   if (msg.type === "text") {
     const text = (msg.text ?? "").trim();
 
-    // 先處理圖文選單按鈕（關鍵字）
+    // 管理員指令（綁定 / 開通匯款）
+    if (await handleAdminCommand(userId, text, replyToken)) return;
+
+    // 圖文選單按鈕（關鍵字）
     if (await handleMenuCommand(userId, text, replyToken)) return;
 
     const user = await getLineUser(userId);
@@ -147,8 +179,11 @@ async function handleEvent(ev: LineEvent): Promise<void> {
       );
       return;
     }
-    if (user.freeUsesRemaining <= 0) {
-      await lineReplyText(replyToken, "你的免費次數已用完囉 🙏 付費方案即將推出。");
+    if (remainingCredits(user) <= 0) {
+      await lineReplyText(
+        replyToken,
+        "你的次數已用完囉 🙏 點下方「購買次數」加值即可繼續使用。"
+      );
       return;
     }
 
@@ -196,14 +231,61 @@ async function handleEvent(ev: LineEvent): Promise<void> {
       } catch (e) {
         console.error("記錄分析失敗", e);
       }
-      await consumeLineFree(userId);
-      const remaining = Math.max(0, user.freeUsesRemaining - 1);
-      await lineReplyText(replyToken, formatResult(result, remaining));
+      await consumeCredit(userId);
+      const after = await getLineUser(userId);
+      await lineReplyText(replyToken, formatResult(result, remainingCredits(after)));
     } catch (e) {
       console.error("分析失敗", e);
       await lineReplyText(replyToken, "分析時發生問題 🙏 請稍後再試一次。");
     }
   }
+}
+
+// 管理員指令：綁定管理員、確認匯款開通。有處理回 true
+async function handleAdminCommand(
+  userId: string,
+  text: string,
+  replyToken: string
+): Promise<boolean> {
+  // 綁定管理員：「管理員綁定 <ADMIN_PASSWORD>」
+  if (text.startsWith("管理員綁定")) {
+    const pwd = text.replace("管理員綁定", "").trim();
+    if (pwd && pwd === process.env.ADMIN_PASSWORD) {
+      await addOwner(userId);
+      await lineReplyText(
+        replyToken,
+        "✅ 已設為管理員，之後有人回報匯款會通知你。\n確認入帳後回「開通 末五碼」即可幫對方加值。"
+      );
+    } else {
+      await lineReplyText(replyToken, "密碼錯誤 🙏");
+    }
+    return true;
+  }
+
+  // 確認開通：「開通 <匯款末五碼>」（僅管理員）
+  if (text.startsWith("開通")) {
+    const owners = await getOwnerIds();
+    if (!owners.includes(userId)) return false; // 非管理員，當一般文字處理
+    const last5 = text.replace("開通", "").trim();
+    const found = await findPendingByLast5(last5);
+    if (!found) {
+      await lineReplyText(replyToken, `找不到末五碼 ${last5} 的待核帳款 🙏`);
+      return true;
+    }
+    await markPaymentConfirmed(found.rec);
+    const u = await addPaidCredits(found.rec.lineUserId, found.rec.credits);
+    await linePush(
+      found.rec.lineUserId,
+      `✅ 已確認收到你的 ${found.rec.planLabel}（NT$${found.rec.amount}）款項，為你加值 ${found.rec.credits} 次！\n目前可用 ${remainingCredits(u)} 次 🐾`
+    );
+    await lineReplyText(
+      replyToken,
+      `✅ 已開通：${found.rec.planLabel} ＋${found.rec.credits} 次，並通知對方。`
+    );
+    return true;
+  }
+
+  return false;
 }
 
 function formatResult(r: AnalyzeResponse, remaining: number): string {
@@ -233,6 +315,6 @@ function formatResult(r: AnalyzeResponse, remaining: number): string {
   if (r.warning) lines.push(`\n⚠️ ${r.warning}`);
 
   lines.push("\n———");
-  lines.push(`本結果為健康參考，非獸醫診斷。剩餘免費次數：${remaining} 次。`);
+  lines.push(`本結果為健康參考，非獸醫診斷。剩餘次數：${remaining} 次。`);
   return lines.join("\n");
 }

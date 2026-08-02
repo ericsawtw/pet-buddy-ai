@@ -10,9 +10,15 @@ export type LinePending = {
 export type LineUser = {
   lineUserId: string;
   freeUsesRemaining: number;
+  paidCredits: number;
   createdAt: string;
   pending?: LinePending | null;
 };
+
+// 剩餘可用次數（免費 + 付費）
+export function remainingCredits(u: LineUser): number {
+  return u.freeUsesRemaining + (u.paidCredits ?? 0);
+}
 
 const PREFIX = "line-users/";
 const LINE_FREE_QUOTA = 3; // 每個 LINE 用戶的免費次數（之後收費上線可調整）
@@ -42,7 +48,11 @@ export async function getLineUser(lineUserId: string): Promise<LineUser> {
   if (match) {
     try {
       const res = await fetch(match.url, { cache: "no-store" });
-      if (res.ok) return (await res.json()) as LineUser;
+      if (res.ok) {
+        const u = (await res.json()) as LineUser;
+        u.paidCredits = u.paidCredits ?? 0; // 舊資料相容
+        return u;
+      }
     } catch {
       // 讀取失敗就當作新使用者往下走
     }
@@ -50,11 +60,23 @@ export async function getLineUser(lineUserId: string): Promise<LineUser> {
   const fresh: LineUser = {
     lineUserId,
     freeUsesRemaining: LINE_FREE_QUOTA,
+    paidCredits: 0,
     createdAt: new Date().toISOString(),
     pending: null,
   };
   await save(fresh);
   return fresh;
+}
+
+// 加購次數（管理員確認匯款後呼叫）
+export async function addPaidCredits(
+  lineUserId: string,
+  n: number
+): Promise<LineUser> {
+  const u = await getLineUser(lineUserId);
+  u.paidCredits = (u.paidCredits ?? 0) + n;
+  await save(u);
+  return u;
 }
 
 // 設定 / 清除「待分析照片」
@@ -67,11 +89,12 @@ export async function setLinePending(
   await save(u);
 }
 
-// 扣一次免費額度並清掉 pending；成功回 true，沒額度回 false
-export async function consumeLineFree(lineUserId: string): Promise<boolean> {
+// 扣一次次數（先扣免費、再扣付費）並清掉 pending；成功回 true，沒額度回 false
+export async function consumeCredit(lineUserId: string): Promise<boolean> {
   const u = await getLineUser(lineUserId);
-  if (u.freeUsesRemaining <= 0) return false;
-  u.freeUsesRemaining -= 1;
+  if (remainingCredits(u) <= 0) return false;
+  if (u.freeUsesRemaining > 0) u.freeUsesRemaining -= 1;
+  else u.paidCredits = (u.paidCredits ?? 0) - 1;
   u.pending = null;
   await save(u);
   return true;
