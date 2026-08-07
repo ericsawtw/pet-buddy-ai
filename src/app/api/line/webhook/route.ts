@@ -17,7 +17,14 @@ import {
 } from "@/lib/line-users";
 import { addOwner, getOwnerIds } from "@/lib/line-owners";
 import { findPendingByLast5, markPaymentConfirmed } from "@/lib/line-payments";
-import { saveImage, recordAnalysis } from "@/lib/store";
+import {
+  saveImage,
+  recordAnalysis,
+  userKey,
+  listAnalysesByKey,
+  countAnalysesByKey,
+} from "@/lib/store";
+import { buildHistoryMessages } from "@/lib/line-history";
 import {
   runAnalysis,
   validateAnalyzeRequest,
@@ -98,9 +105,15 @@ async function handleMenuCommand(
         },
       ]);
       return true;
-    case "歷史紀錄":
-      await lineReplyText(replyToken, "📖 歷史紀錄功能即將推出，敬請期待 🙏");
+    case "歷史紀錄": {
+      const key = userKey("line:" + userId);
+      const [records, total] = await Promise.all([
+        listAnalysesByKey(key, { limit: 5 }),
+        countAnalysesByKey(key),
+      ]);
+      await lineReply(replyToken, buildHistoryMessages(records, total, key));
       return true;
+    }
     case "使用教學":
       await lineReplyVideo(
         replyToken,

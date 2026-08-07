@@ -101,7 +101,7 @@ export default async function HistoryPage() {
     redirect("/api/auth/google/login");
   }
 
-  const records = await listAnalysesByUser(googleId);
+  const records = await listAnalysesByUser(googleId, { limit: 200 });
 
   return (
     <main className="flex-1 px-4 py-10 sm:px-6 sm:py-14">
