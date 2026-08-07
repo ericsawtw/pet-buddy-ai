@@ -245,9 +245,12 @@ async function handleEvent(ev: LineEvent): Promise<void> {
       } catch (e) {
         console.error("記錄分析失敗", e);
       }
-      await consumeCredit(userId);
-      const after = await getLineUser(userId);
-      await lineReplyText(replyToken, formatResult(result, remainingCredits(after)));
+      // 直接用扣款後回傳的使用者算剩餘次數。若改成重讀一次，會讀到扣款前的舊值。
+      const after = await consumeCredit(userId);
+      await lineReplyText(
+        replyToken,
+        formatResult(result, after ? remainingCredits(after) : 0)
+      );
     } catch (e) {
       console.error("分析失敗", e);
       await lineReplyText(replyToken, "分析時發生問題 🙏 請稍後再試一次。");
