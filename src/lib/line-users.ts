@@ -60,22 +60,39 @@ function normalize(u: LineUser): LineUser {
   return u;
 }
 
+// 檔名以 ISO 時間開頭，字串反向排序即為由新到舊
+function newestFirst<T extends { pathname: string }>(blobs: T[]): T[] {
+  return [...blobs].sort((a, b) => (a.pathname < b.pathname ? 1 : -1));
+}
+
+// 決定新檔名的時間戳，確保一定排在現有最新版本之後。
+//
+// 直接用 new Date() 的話，同一毫秒內連續存兩次會產生兩個時間戳相同的檔名，
+// 先後順序就落到後面那段隨機 UUID 上 —— 讀取時可能挑到舊的那一份，造成
+// pending 遺失或次數少扣。同一個請求裡「建立使用者後立刻存檔」就會踩到。
+function nextStamp(newestPathname: string | undefined, folder: string): string {
+  const now = Date.now();
+  if (!newestPathname) return new Date(now).toISOString();
+  const name = newestPathname.slice(folder.length);
+  const prev = Date.parse(name.slice(0, name.indexOf("_")));
+  return new Date(Number.isFinite(prev) && prev >= now ? prev + 1 : now).toISOString();
+}
+
 // 存檔：寫一份新版本，再把過舊的版本清掉（清理失敗不影響主流程）
 async function save(u: LineUser): Promise<void> {
   const folder = folderFor(u.lineUserId);
-  const name = `${new Date().toISOString()}_${randomUUID()}.json`;
-  await put(`${folder}${name}`, JSON.stringify(u), {
+  const existing = newestFirst((await list({ prefix: folder, limit: 100 })).blobs);
+  const stamp = nextStamp(existing[0]?.pathname, folder);
+
+  await put(`${folder}${stamp}_${randomUUID()}.json`, JSON.stringify(u), {
     access: "public",
     contentType: "application/json",
     addRandomSuffix: false,
   });
 
   try {
-    const { blobs } = await list({ prefix: folder, limit: 100 });
-    const stale = [...blobs]
-      .sort((a, b) => (a.pathname < b.pathname ? 1 : -1)) // 新到舊
-      .slice(KEEP_VERSIONS);
-    await Promise.all(stale.map((b) => del(b.url)));
+    // 剛寫進去的那份也算一份，所以舊的只留 KEEP_VERSIONS - 1 份
+    await Promise.all(existing.slice(KEEP_VERSIONS - 1).map((b) => del(b.url)));
   } catch (e) {
     console.error("清理 line-user 舊版本失敗", e);
   }
@@ -85,7 +102,7 @@ async function save(u: LineUser): Promise<void> {
 export async function getLineUser(lineUserId: string): Promise<LineUser> {
   const folder = folderFor(lineUserId);
   const { blobs } = await list({ prefix: folder, limit: 100 });
-  const newest = [...blobs].sort((a, b) => (a.pathname < b.pathname ? 1 : -1))[0];
+  const newest = newestFirst(blobs)[0];
   if (newest) {
     const u = await fetchJson<LineUser>(newest.url);
     if (u) return normalize(u);
