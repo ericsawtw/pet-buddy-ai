@@ -16,7 +16,7 @@ import {
   addPaidCredits,
 } from "@/lib/line-users";
 import { addOwner, getOwnerIds } from "@/lib/line-owners";
-import { findPendingByLast5, markPaymentConfirmed } from "@/lib/line-payments";
+import { findPaymentByLast5, markPaymentConfirmed } from "@/lib/line-payments";
 import {
   saveImage,
   recordAnalysis,
@@ -297,21 +297,40 @@ async function handleAdminCommand(
     const owners = await getOwnerIds();
     if (!owners.includes(userId)) return false; // 非管理員，當一般文字處理
     const last5 = text.replace("開通", "").trim();
-    const found = await findPendingByLast5(last5);
+    const found = await findPaymentByLast5(last5);
     if (!found) {
       await lineReplyText(replyToken, `找不到末五碼 ${last5} 的待核帳款 🙏`);
       return true;
     }
-    await markPaymentConfirmed(found.rec);
-    const u = await addPaidCredits(found.rec.lineUserId, found.rec.credits);
-    await linePush(
-      found.rec.lineUserId,
-      `✅ 已確認收到你的 ${found.rec.planLabel}（NT$${found.rec.amount}）款項，為你加值 ${found.rec.credits} 次！\n目前可用 ${remainingCredits(u)} 次 🐾`
-    );
-    await lineReplyText(
-      replyToken,
-      `✅ 已開通：${found.rec.planLabel} ＋${found.rec.credits} 次，並通知對方。`
-    );
+    const { rec } = found;
+    if (found.confirmed) {
+      await lineReplyText(
+        replyToken,
+        `ℹ️ 這筆已經開通過了：${rec.planLabel}（NT$${rec.amount}）＋${rec.credits} 次。\n沒有重複加值 🐾`
+      );
+      return true;
+    }
+
+    // 先寫下「已開通」標記再加值。順序反過來的話，連按兩次會在標記寫進去之前
+    // 各加值一次。
+    await markPaymentConfirmed(rec);
+    try {
+      const u = await addPaidCredits(rec.lineUserId, rec.credits);
+      await linePush(
+        rec.lineUserId,
+        `✅ 已確認收到你的 ${rec.planLabel}（NT$${rec.amount}）款項，為你加值 ${rec.credits} 次！\n目前可用 ${remainingCredits(u)} 次 🐾`
+      );
+      await lineReplyText(
+        replyToken,
+        `✅ 已開通：${rec.planLabel} ＋${rec.credits} 次，並通知對方。`
+      );
+    } catch (e) {
+      console.error("加值失敗", rec.id, e);
+      await lineReplyText(
+        replyToken,
+        `⚠️ 這筆已標記為開通，但加值失敗了，對方還沒拿到次數。\n請找工程師處理，匯款單編號：${rec.id}`
+      );
+    }
     return true;
   }
 
